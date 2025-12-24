@@ -11,7 +11,6 @@ import {
     User,
     Tag,
     MessageSquare,
-    ChevronRight,
     AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

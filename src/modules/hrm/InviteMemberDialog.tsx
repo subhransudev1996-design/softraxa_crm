@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Shield, UserPlus, X, Briefcase } from 'lucide-react';
+import { Mail, Shield, UserPlus, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 const InviteMemberDialog: React.FC = () => {

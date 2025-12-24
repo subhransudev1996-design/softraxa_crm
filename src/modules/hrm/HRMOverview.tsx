@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
     Users,
-    UserPlus,
     Shield,
     DollarSign,
     Search,

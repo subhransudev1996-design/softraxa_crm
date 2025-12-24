@@ -4,7 +4,6 @@ import {
     X,
     Mail,
     Phone,
-    MessageSquare,
     PhoneCall,
     History,
     FileText
