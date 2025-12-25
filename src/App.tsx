@@ -42,6 +42,30 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean 
   return <>{children}</>;
 };
 
+const RoleBasedRedirect: React.FC = () => {
+  const { profile, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
+  }
+
+  // If no profile yet (e.g. just registered), show common dashboard
+  if (!profile) {
+    return <DashboardOverview />;
+  }
+
+  // Redirect admins to CRM overview
+  if (profile.role === 'admin') {
+    return <Navigate to="/crm" replace />;
+  }
+
+  return <DashboardOverview />;
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -56,7 +80,7 @@ function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <DashboardOverview />
+                <RoleBasedRedirect />
               </ProtectedRoute>
             }
           />

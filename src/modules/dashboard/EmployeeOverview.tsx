@@ -66,7 +66,7 @@ const EmployeeOverview: React.FC = () => {
                 .from('tasks')
                 .select('title, due_date')
                 .eq('assignee_id', profile?.id)
-                .is('status', 'in_progress')
+                .eq('status', 'in_progress')
                 .not('due_date', 'is', null)
                 .gt('due_date', new Date().toISOString())
                 .order('due_date', { ascending: true })

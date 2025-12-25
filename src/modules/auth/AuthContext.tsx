@@ -29,6 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchProfile = async (userId: string) => {
         try {
+            console.log('Fetching profile for user:', userId);
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.error('Error fetching profile:', error);
                 return null;
             }
+            console.log('Profile fetched successfully:', data?.role);
             return data as Profile;
         } catch (error) {
             console.error('Unexpected error fetching profile:', error);
@@ -49,30 +51,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         // Initial session check
         const initializeAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setSession(session);
-            setUser(session?.user ?? null);
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
 
-            if (session?.user) {
-                const profileData = await fetchProfile(session.user.id);
-                setProfile(profileData);
+                if (error) {
+                    // Handle invalid refresh token errors gracefully
+                    if (error.message.includes('Invalid Refresh Token') ||
+                        error.message.includes('Refresh Token Not Found')) {
+                        console.log('Clearing stale session from storage...');
+                        // Clear the invalid session from localStorage
+                        await supabase.auth.signOut();
+                    } else {
+                        console.error('Session initialization error:', error.message);
+                    }
+                    setSession(null);
+                    setUser(null);
+                    setProfile(null);
+                } else {
+                    setSession(session);
+                    setUser(session?.user ?? null);
+
+                    if (session?.user) {
+                        try {
+                            const profileData = await fetchProfile(session.user.id);
+                            setProfile(profileData);
+                            // If profile is missing, we might need to wait for trigger or just allow guest access
+                            if (!profileData) {
+                                console.warn('Profile not found for user:', session.user.id);
+                            }
+                        } catch (err) {
+                            console.error('Initial profile fetch failed:', err);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Unexpected error during auth initialization:', err);
+                // Clear any potentially corrupted session
+                try {
+                    await supabase.auth.signOut();
+                } catch (signOutErr) {
+                    console.error('Error clearing corrupted session:', signOutErr);
+                }
+                setSession(null);
+                setUser(null);
+                setProfile(null);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         initializeAuth();
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth state changed:', event, session?.user?.email);
+
             setSession(session);
             setUser(session?.user ?? null);
 
             if (session?.user) {
-                const profileData = await fetchProfile(session.user.id);
-                setProfile(profileData);
+                try {
+                    const profileData = await fetchProfile(session.user.id);
+                    setProfile(profileData);
+                } catch (err) {
+                    console.error('Error fetching profile on auth change:', err);
+                }
             } else {
                 setProfile(null);
             }
+
+            // Critical: Ensure loading is false after auth changes
             setLoading(false);
         });
 

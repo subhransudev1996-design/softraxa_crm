@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -9,6 +10,15 @@ const Login: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // Redirect to home if already logged in or when login succeeds
+    useEffect(() => {
+        if (user && !error) {
+            console.log('User authenticated, redirecting to dashboard...');
+            navigate('/', { replace: true });
+        }
+    }, [user, navigate, error]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -16,16 +26,31 @@ const Login: React.FC = () => {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
+            console.log('Starting login process...');
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: password,
             });
 
-            if (error) throw error;
-            navigate('/');
+            if (error) {
+                console.error('Login failed:', error.message);
+                if (error.message.includes('Invalid login credentials')) {
+                    throw new Error('Invalid email or password. Please check your credentials and try again.');
+                }
+                throw error;
+            }
+
+            console.log('Login successful! User:', data.user?.email);
+            console.log('Auth state will update automatically, waiting for redirect...');
+
+            // The useEffect will handle navigation when user state updates
+            // Clear loading state after successful login
+            setLoading(false);
+
         } catch (err: any) {
-            setError(err.message || 'An error occurred during login');
-        } finally {
+            console.error('Login error:', err);
+            setError(err.message || 'An error occurred during login. Please try again.');
             setLoading(false);
         }
     };

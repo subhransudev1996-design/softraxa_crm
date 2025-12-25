@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Mail, User, Loader2, ArrowRight } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
 const Register: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -10,6 +11,15 @@ const Register: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // Redirect to home if already logged in or when registration succeeds
+    useEffect(() => {
+        if (user && !error) {
+            console.log('User authenticated after registration, redirecting to dashboard...');
+            navigate('/', { replace: true });
+        }
+    }, [user, navigate, error]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,13 +41,21 @@ const Register: React.FC = () => {
 
             if (signUpError) throw signUpError;
 
-            if (data.user) {
-                // success
+            console.log('Registration data:', data);
+
+            if (data.session) {
+                // If email confirmation is off, we get a session immediately
+                console.log('Session obtained immediately, auth state will update automatically');
+                // The useEffect will handle navigation when user state updates
+                setLoading(false);
+            } else if (data.user) {
+                // Email confirmation required - redirect to login
+                console.log('Registration successful, please check email and login');
                 navigate('/login');
             }
         } catch (err: any) {
+            console.error('Registration error details:', err);
             setError(err.message || 'An error occurred during registration');
-        } finally {
             setLoading(false);
         }
     };
