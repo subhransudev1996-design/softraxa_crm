@@ -44,6 +44,8 @@ export function EmployeeDetails() {
   const [tasks, setTasks] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState('leads');
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [updating, setUpdating] = React.useState(false);
 
   const fetchEmployeeData = React.useCallback(async () => {
     setLoading(true);
@@ -98,6 +100,62 @@ export function EmployeeDetails() {
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-10 animate-fade-in pb-20">
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        title="Edit Employee Profile"
+      >
+        <form 
+          className="space-y-6" 
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setUpdating(true);
+            const formData = new FormData(e.currentTarget);
+            const fullName = formData.get('full_name') as string;
+            const phone = formData.get('phone') as string;
+            
+            const { error } = await supabase
+              .from('profiles')
+              .update({ 
+                full_name: fullName,
+                phone: phone
+              })
+              .eq('id', id);
+
+            if (!error) {
+              setEmployee({ ...employee, full_name: fullName, phone: phone });
+              setIsEditModalOpen(false);
+              alert('Profile updated successfully!');
+            } else {
+              alert(error.message);
+            }
+            setUpdating(false);
+          }}
+        >
+          <div className="space-y-4">
+            <Input 
+              name="full_name" 
+              label="Full Name" 
+              defaultValue={employee.full_name} 
+              placeholder="e.g. Sarah Williams" 
+              required 
+            />
+            <Input 
+              name="phone" 
+              label="Phone Number" 
+              defaultValue={employee.phone} 
+              placeholder="+91 99999 99999" 
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="ghost" onClick={() => setIsEditModalOpen(false)} className="flex-1">Cancel</Button>
+            <Button type="submit" disabled={updating} className="flex-1 shadow-elevated">
+              {updating ? 'Updating...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-6">
@@ -130,10 +188,11 @@ export function EmployeeDetails() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="border-zinc-200 h-11 px-6 rounded-xl hover:bg-zinc-50 shadow-soft font-bold uppercase text-[10px] tracking-widest">
-            <MessageSquare className="w-4 h-4 mr-2" /> Message
-          </Button>
-          <Button variant="outline" className="rounded-xl h-11 border-zinc-200 shadow-sm font-bold uppercase text-[10px] tracking-widest">
+          <Button 
+            variant="outline" 
+            className="rounded-xl h-11 border-zinc-200 shadow-sm font-bold uppercase text-[10px] tracking-widest"
+            onClick={() => setIsEditModalOpen(true)}
+          >
             <Pencil className="w-4 h-4 mr-2" /> Edit Profile
           </Button>
         </div>
@@ -341,6 +400,9 @@ export function EmployeeDetails() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 text-xs font-bold text-zinc-400">
                     <Mail className="w-4 h-4 text-zinc-600" /> {employee.email || 'No email registered'}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs font-bold text-zinc-400">
+                    <Phone className="w-4 h-4 text-zinc-600" /> {employee.phone || 'No phone registered'}
                   </div>
                   <div className="flex items-center gap-4 text-xs font-bold text-zinc-400">
                     <Calendar className="w-4 h-4 text-zinc-600" /> Joined {new Date(employee.created_at).toLocaleDateString()}

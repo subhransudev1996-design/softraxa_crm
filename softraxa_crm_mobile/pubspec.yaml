@@ -1,0 +1,42 @@
+name: softraxa_crm_mobile
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_hooks: ^0.21.3+1
+  flutter_riverpod: ^3.3.1
+  go_router: ^17.1.0
+  google_fonts: ^8.0.2
+  hooks_riverpod: ^3.3.1
+  intl: ^0.20.2
+  supabase_flutter: ^2.12.0
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/splash_logo.png
+  android_12:
+    image: assets/splash_logo.png
+    color: "#ffffff"
+  web: false
+
+flutter:
+  uses-material-design: true

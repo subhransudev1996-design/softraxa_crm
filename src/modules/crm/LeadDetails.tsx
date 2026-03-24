@@ -9,7 +9,8 @@ import {
   MessageSquare, LayoutGrid, FileText,
   AlertCircle, Pencil, Trash2, ExternalLink,
   Building2, MapPin, Globe, Mail, Phone,
-  History, TrendingUp, Info, MessageCircle, X, Award, Target, ShieldCheck
+  History, TrendingUp, Info, MessageCircle, X, Award, Target, ShieldCheck,
+  Instagram, Facebook, Linkedin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/modules/auth/AuthContext';
 import Link from 'next/link';
+import { SocialMessageModal } from './components/SocialMessageModal';
+import { AssignTaskModal } from './components/AssignTaskModal';
 
 const categories = [
   'Restaurant', 
@@ -42,6 +45,8 @@ export function LeadDetails() {
   const [members, setMembers] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = React.useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [hasWebsite, setHasWebsite] = React.useState(false);
 
@@ -98,6 +103,11 @@ export function LeadDetails() {
           is_mobile_responsive: hasWebsite ? formData.get('is_mobile_responsive') === 'true' : false,
           lead_tier: formData.get('lead_tier'),
           status: formData.get('status'),
+          social_platform: formData.get('social_platform'),
+          social_handle: formData.get('social_handle'),
+          social_url: formData.get('social_url'),
+          follow_up_date: formData.get('follow_up_date') || null,
+          follow_up_time: formData.get('follow_up_time') || null,
           created_by: formData.get('created_by'),
         })
         .eq('id', id);
@@ -224,6 +234,9 @@ export function LeadDetails() {
               <Award className="w-4 h-4 mr-2" /> Convert to Client
             </Button>
           )}
+          <Button onClick={() => setIsTaskModalOpen(true)} variant="outline" className="rounded-xl h-11 border-orange-100 text-orange-600 hover:bg-orange-50 shadow-sm font-bold">
+            <Plus className="w-4 h-4 mr-2" /> Assign Task
+          </Button>
         </div>
       </header>
 
@@ -233,6 +246,7 @@ export function LeadDetails() {
           { label: 'Projected Value', value: `₹${(lead.value || 0).toLocaleString()}`, icon: DollarSign, color: 'text-zinc-900' },
           { label: 'Lead Tier', value: lead.lead_tier?.toUpperCase() || 'NORMAL', icon: Award, color: lead.lead_tier === 'premium' ? 'text-amber-600' : 'text-zinc-400' },
           { label: 'Website Status', value: lead.has_website ? 'EXISTING' : 'NONE', icon: Globe, color: lead.has_website ? 'text-emerald-600' : 'text-zinc-300' },
+          { label: 'Follow Up', value: lead.follow_up_date ? `${new Date(lead.follow_up_date).toLocaleDateString()} ${lead.follow_up_time || ''}` : 'Not Set', icon: Clock, color: 'text-orange-600' },
           { label: 'Created On', value: new Date(lead.created_at).toLocaleDateString(), icon: Calendar, color: 'text-blue-600' },
         ].map((stat, i) => (
           <Card key={i} className="border-zinc-100 shadow-soft overflow-hidden rounded-3xl">
@@ -278,6 +292,15 @@ export function LeadDetails() {
                       <p className="text-sm font-bold text-black">{lead.email || 'Not provided'}</p>
                     </div>
                   </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-white shadow-sm">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Registered By</p>
+                      <p className="text-sm font-bold text-black">{lead.creator?.full_name || 'System Auto'}</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
@@ -298,15 +321,20 @@ export function LeadDetails() {
                       <p className="text-sm font-bold text-black">{lead.address || 'Not provided'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-white shadow-sm">
-                      <ShieldCheck className="w-5 h-5" />
+                  {lead.social_handle && (
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400">
+                        {lead.social_platform === 'instagram' ? <Instagram className="w-5 h-5 text-pink-500" /> : 
+                         lead.social_platform === 'facebook' ? <Facebook className="w-5 h-5 text-blue-500" /> :
+                         lead.social_platform === 'linkedin' ? <Linkedin className="w-5 h-5 text-blue-700" /> :
+                         <Globe className="w-5 h-5 text-zinc-400" />}
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{lead.social_platform} Handle</p>
+                        <p className="text-sm font-bold text-black">{lead.social_handle}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Registered By</p>
-                      <p className="text-sm font-bold text-black">{lead.creator?.full_name || 'System Auto'}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -325,10 +353,21 @@ export function LeadDetails() {
                     </Button>
                   </a>
                 )}
+                <Button 
+                  onClick={() => setIsWhatsAppModalOpen(true)} 
+                  className={cn(
+                    "flex-1 rounded-xl text-white shadow-elevated h-12 px-6 font-bold text-xs",
+                    lead.social_platform === 'instagram' ? "bg-pink-600 hover:bg-pink-700" :
+                    lead.social_platform === 'facebook' ? "bg-blue-600 hover:bg-blue-700" :
+                    lead.social_platform === 'linkedin' ? "bg-blue-800 hover:bg-blue-900" : "bg-emerald-600 hover:bg-emerald-700"
+                  )}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" /> {lead.social_platform?.toUpperCase() || 'WA'} Templates
+                </Button>
                 {lead.email && (
                   <a href={`mailto:${lead.email}`} className="flex-1">
                     <Button variant="outline" className="w-full rounded-xl border-zinc-100 shadow-soft h-12 px-6">
-                      <Mail className="w-4 h-4 mr-2" /> Send Email
+                      <Mail className="w-4 h-4 mr-2" /> Email
                     </Button>
                   </a>
                 )}
@@ -514,6 +553,40 @@ export function LeadDetails() {
               <Input name="phone" label="Phone Number" type="tel" defaultValue={lead.phone} />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">Social Platform</label>
+                <select 
+                  name="social_platform" 
+                  defaultValue={lead.social_platform || 'whatsapp'}
+                  className="w-full h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-zinc-400"
+                >
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <Input 
+                name="social_handle" 
+                label="Social Handle/ID" 
+                placeholder="e.g. @username" 
+                defaultValue={lead.social_handle}
+              />
+            </div>
+            <Input 
+              name="social_url" 
+              label="Social Profile URL" 
+              placeholder="https://..." 
+              defaultValue={lead.social_url}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input name="follow_up_date" label="Next Follow Up" type="date" defaultValue={lead.follow_up_date} />
+              <Input name="follow_up_time" label="Follow Up Time" type="time" defaultValue={lead.follow_up_time} />
+            </div>
+
             <Input name="address" label="Address" defaultValue={lead.address} />
 
             <div className="pt-2 border-t border-zinc-50 space-y-4">
@@ -562,6 +635,18 @@ export function LeadDetails() {
           </div>
         </form>
       </Modal>
+
+      <SocialMessageModal 
+        isOpen={isWhatsAppModalOpen} 
+        onClose={() => setIsWhatsAppModalOpen(false)} 
+        lead={lead} 
+      />
+
+      <AssignTaskModal 
+        isOpen={isTaskModalOpen} 
+        onClose={() => setIsTaskModalOpen(false)} 
+        lead={lead} 
+      />
     </div>
   );
 }

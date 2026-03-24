@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/modules/auth/AuthContext';
+import { SocialMessageModal } from './components/SocialMessageModal';
 
 export function FollowupOverview() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export function FollowupOverview() {
   const [error, setError] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = React.useState(false);
   const [selectedLead, setSelectedLead] = React.useState<any>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState('all');
@@ -77,6 +79,7 @@ export function FollowupOverview() {
     setSubmitting(true);
     const formData = new FormData(e.currentTarget);
     const nextFollowUp = formData.get('next_follow_up') as string;
+    const nextFollowUpTime = formData.get('next_follow_up_time') as string;
     const notes = formData.get('notes') as string;
     const status = formData.get('status') as string;
 
@@ -86,6 +89,7 @@ export function FollowupOverview() {
         .update({
           last_contacted_at: new Date().toISOString(),
           follow_up_date: nextFollowUp || null,
+          follow_up_time: nextFollowUpTime || null,
           notes: selectedLead.notes ? `${selectedLead.notes}\n---\n${new Date().toLocaleDateString()}: ${notes}` : notes,
           status: status || selectedLead.status,
           ...(status === 'won' ? { converted_by: user?.id } : {})
@@ -313,6 +317,7 @@ export function FollowupOverview() {
                             )}>
                               <Calendar className="w-3 h-3" />
                               <span>{isToday ? 'Today' : lead.follow_up_date}</span>
+                              {lead.follow_up_time && <span className="ml-1 opacity-70 border-l border-white/20 pl-1">{lead.follow_up_time}</span>}
                               {isOverdue && <AlertCircle className="w-3 h-3 ml-1" />}
                             </div>
                           ) : (
@@ -349,6 +354,18 @@ export function FollowupOverview() {
                               >
                                 <Phone className="w-4 h-4" />
                               </a>
+                            )}
+                            {lead.phone && (
+                              <button 
+                                onClick={() => {
+                                  setSelectedLead(lead);
+                                  setIsWhatsAppModalOpen(true);
+                                }}
+                                className="w-9 h-9 rounded-xl border border-emerald-100 bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-100 transition-all shadow-sm"
+                                title="WhatsApp Template"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
                             )}
                             <button 
                               onClick={() => {
@@ -419,6 +436,15 @@ export function FollowupOverview() {
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">Next Follow-up Time</label>
+                <input 
+                  type="time" 
+                  name="next_follow_up_time"
+                  className="w-full h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-zinc-400"
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">Call Notes</label>
                 <textarea 
                   name="notes"
@@ -438,6 +464,17 @@ export function FollowupOverview() {
           </form>
         )}
       </Modal>
+
+      {selectedLead && (
+        <SocialMessageModal
+          isOpen={isWhatsAppModalOpen}
+          onClose={() => {
+            setIsWhatsAppModalOpen(false);
+            setSelectedLead(null);
+          }}
+          lead={selectedLead}
+        />
+      )}
     </div>
   );
 }

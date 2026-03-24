@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/modules/auth/AuthContext';
+import Link from 'next/link';
 
 const container = {
   hidden: { opacity: 0 },
@@ -38,7 +39,7 @@ export function TasksOverview() {
     setLoading(true);
     try {
       const [tRes, pRes, prRes] = await Promise.allSettled([
-        supabase.from('tasks').select('*, projects(name), profiles:assignee_id(full_name, role)').order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*, projects(name), profiles:assignee_id(full_name, role), leads(name, company)').order('created_at', { ascending: false }),
         supabase.from('projects').select('id, name'),
         supabase.from('profiles').select('id, full_name, role'),
       ]);
@@ -350,7 +351,18 @@ export function TasksOverview() {
                                 </div>
                               </div>
                               <h3 className="text-sm font-bold text-black mb-1 group-hover:text-zinc-500 transition-colors">{task.title}</h3>
-                              <p className="text-[11px] text-zinc-400 font-medium mb-6">{task.projects?.name || 'General'}</p>
+                              <div className="flex flex-col gap-1 mb-6">
+                                <p className="text-[11px] text-zinc-400 font-medium">{task.projects?.name || 'General'}</p>
+                                {task.leads && (
+                                  <Link 
+                                    href={`/crm/${task.lead_id}`}
+                                    className="inline-flex items-center gap-1.5 text-[9px] font-black text-orange-600 uppercase tracking-widest hover:text-orange-700 transition-colors"
+                                  >
+                                    <ArrowUpRight className="w-3 h-3" />
+                                    Lead: {task.leads.company || task.leads.name}
+                                  </Link>
+                                )}
+                              </div>
                               
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">

@@ -61,6 +61,7 @@ export function HRMOverview() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('full_name') as string;
+    const phone = formData.get('phone') as string;
     const role = formData.get('role') as string;
     
     try {
@@ -83,7 +84,8 @@ export function HRMOverview() {
           .from('profiles')
           .update({ 
             role: role,
-            full_name: fullName 
+            full_name: fullName,
+            phone: phone
           })
           .eq('id', data.user.id);
 
@@ -163,6 +165,7 @@ export function HRMOverview() {
           <div className="space-y-4">
             <Input name="full_name" label="Full Name" placeholder="e.g. Sarah Williams" required />
             <Input name="email" label="Email Address" type="email" placeholder="colleague@softraxa.com" required />
+            <Input name="phone" label="Phone Number" placeholder="+91 99999 99999" required />
             <Input name="password" label="Temporary Password" type="password" placeholder="••••••••" required />
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">Assigned Role</label>
@@ -271,6 +274,12 @@ export function HRMOverview() {
                             <span>{employee.role}</span>
                             <div className="w-1 h-1 rounded-full bg-zinc-200" />
                             <span>Joined {new Date(employee.created_at).toLocaleDateString()}</span>
+                            {employee.phone && (
+                              <>
+                                <div className="w-1 h-1 rounded-full bg-zinc-200" />
+                                <span>{employee.phone}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>

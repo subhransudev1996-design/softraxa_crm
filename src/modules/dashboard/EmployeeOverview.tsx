@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/modules/auth/AuthContext';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { Calendar, Clock } from 'lucide-react';
 
 const container = {
   hidden: { opacity: 0 },
@@ -24,7 +26,42 @@ const item = {
 };
 
 export function EmployeeOverview() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const [stats, setStats] = React.useState({
+    followUpsToday: 0,
+    pendingTasks: 0,
+    totalPoints: 0,
+    level: 1
+  });
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchEmployeeStats = React.useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      const [lRes, tRes] = await Promise.all([
+        supabase.from('leads').select('id').eq('follow_up_date', today).eq('created_by', user.id),
+        supabase.from('tasks').select('id').neq('status', 'done').eq('assigned_to', user.id)
+      ]);
+
+      setStats({
+        followUpsToday: lRes.data?.length || 0,
+        pendingTasks: tRes.data?.length || 0,
+        totalPoints: profile?.points || 0,
+        level: profile?.level || 1
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, profile]);
+
+  React.useEffect(() => {
+    fetchEmployeeStats();
+  }, [fetchEmployeeStats]);
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-10 animate-fade-in">
@@ -91,14 +128,14 @@ export function EmployeeOverview() {
 
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <div className="p-3 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
-                  <Flame className="w-4 h-4 text-zinc-400 mb-2" />
-                  <p className="text-lg font-bold">12</p>
-                  <p className="text-[9px] font-bold text-zinc-500 uppercase">Day Streak</p>
+                  <Calendar className="w-4 h-4 text-orange-400 mb-2" />
+                  <p className="text-lg font-bold">{stats.followUpsToday}</p>
+                  <p className="text-[9px] font-bold text-zinc-500 uppercase">Follow-ups Today</p>
                 </div>
                 <div className="p-3 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
-                  <Star className="w-4 h-4 text-zinc-400 mb-2" />
-                  <p className="text-lg font-bold">#4</p>
-                  <p className="text-[9px] font-bold text-zinc-500 uppercase">Rank</p>
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 mb-2" />
+                  <p className="text-lg font-bold">{stats.pendingTasks}</p>
+                  <p className="text-[9px] font-bold text-zinc-500 uppercase">Pending Tasks</p>
                 </div>
               </div>
             </CardContent>

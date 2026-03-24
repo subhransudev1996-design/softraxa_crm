@@ -53,12 +53,15 @@ export function AdminOverview() {
       const invoicesData = iRes.status === 'fulfilled' ? (iRes.value.data || []) : [];
 
       const totalRevenue = invoicesData.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const today = new Date().toISOString().split('T')[0];
+      const followUpsToday = leadsData.filter(l => l.follow_up_date === today).length;
+      const pendingTasks = tasksData.filter(t => t.status !== 'done').length;
 
       setStats([
         { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, change: '+12%', trend: 'up', icon: DollarSign, color: 'bg-zinc-500/10 text-zinc-900' },
-        { label: 'Active Projects', value: projectsData.length.toString(), change: '+2', trend: 'up', icon: Briefcase, color: 'bg-zinc-500/10 text-zinc-900' },
-        { label: 'Tasks Done', value: tasksData.filter(t => t.status === 'done').length.toString(), change: '+5', trend: 'up', icon: CheckCircle2, color: 'bg-zinc-500/10 text-zinc-900' },
-        { label: 'New Leads', value: leadsData.length.toString(), change: '+3', trend: 'up', icon: Users, color: 'bg-zinc-500/10 text-zinc-900' },
+        { label: 'Followups Today', value: followUpsToday.toString(), change: 'Action Required', trend: 'up', icon: Clock, color: 'bg-orange-500/10 text-orange-600' },
+        { label: 'Pending Tasks', value: pendingTasks.toString(), change: 'Workstation', trend: 'up', icon: CheckCircle2, color: 'bg-blue-500/10 text-blue-600' },
+        { label: 'Active Projects', value: projectsData.length.toString(), change: 'Managing', trend: 'up', icon: Briefcase, color: 'bg-zinc-500/10 text-zinc-900' },
       ]);
 
       setProjects(projectsData.slice(0, 3));

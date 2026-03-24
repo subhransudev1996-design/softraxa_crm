@@ -1,0 +1,15 @@
+﻿src/components/InvoiceBuilder.tsx(3,41): error TS6133: 'Printer' is declared but its value is never read.
+src/components/InvoicesView.tsx(51,23): error TS6133: 'id' is declared but its value is never read.
+src/components/ProductDetails.tsx(11,10): error TS6133: 'vendors' is declared but its value is never read.
+src/components/ProductsView.tsx(3,41): error TS6133: 'Box' is declared but its value is never read.
+src/components/ProductsView.tsx(3,46): error TS6133: 'Tag' is declared but its value is never read.
+src/components/ProductsView.tsx(3,51): error TS6133: 'Users' is declared but its value is never read.
+src/components/ProductsView.tsx(3,58): error TS6133: 'Calendar' is declared but its value is never read.
+src/components/ProductsView.tsx(3,77): error TS6133: 'Percent' is declared but its value is never read.
+src/components/ProductsView.tsx(3,86): error TS6133: 'Settings' is declared but its value is never read.
+src/components/ProductsView.tsx(3,96): error TS6133: 'ShieldAlert' is declared but its value is never read.
+src/components/ProductsView.tsx(3,109): error TS6133: 'ArrowLeft' is declared but its value is never read.
+src/components/ProductsView.tsx(250,10): error TS6133: 'loading' is declared but its value is never read.
+src/components/ProductsView.tsx(414,10): error TS6133: 'loading' is declared but its value is never read.
+src/components/PurchaseBuilder.tsx(3,41): error TS6133: 'Search' is declared but its value is never read.
+src/components/PurchasesView.tsx(51,23): error TS6133: 'id' is declared but its value is never read.

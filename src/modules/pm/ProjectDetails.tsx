@@ -17,6 +17,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/modules/auth/AuthContext';
 import Link from 'next/link';
 import { InvoiceGenerator } from '@/modules/finance/InvoiceGenerator';
+import { Modal } from '@/components/ui/modal';
+import { Input } from '@/components/ui/input';
 
 const container = {
   hidden: { opacity: 0 },
@@ -43,26 +45,64 @@ export function ProjectDetails() {
   const [activeTab, setActiveTab] = React.useState('overview');
 
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = React.useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
   const [selectedInvoice, setSelectedInvoice] = React.useState<any>(null);
+  const [profiles, setProfiles] = React.useState<any[]>([]);
+  const [assignToClient, setAssignToClient] = React.useState(false);
+  const [submittingTask, setSubmittingTask] = React.useState(false);
 
   const fetchProjectData = async () => {
     setLoading(true);
     try {
-      const [pRes, tRes, iRes, eRes] = await Promise.allSettled([
+      const [pRes, tRes, iRes, eRes, prRes] = await Promise.allSettled([
         supabase.from('projects').select('*, profiles:client_id(*)').eq('id', id).single(),
         supabase.from('tasks').select('*, profiles:assignee_id(full_name)').eq('project_id', id).order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-        supabase.from('expenses').select('*').eq('project_id', id).order('created_at', { ascending: false })
+        supabase.from('expenses').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, full_name, role'),
       ]);
 
       if (pRes.status === 'fulfilled' && pRes.value.data) setProject(pRes.value.data);
       if (tRes.status === 'fulfilled' && tRes.value.data) setTasks(tRes.value.data);
       if (iRes.status === 'fulfilled' && iRes.value.data) setInvoices(iRes.value.data || []);
       if (eRes.status === 'fulfilled' && eRes.value.data) setExpenses(eRes.value.data || []);
+      if (prRes.status === 'fulfilled') setProfiles(prRes.value.data || []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const employees = profiles.filter(p => p.role !== 'client');
+  const clients = profiles.filter(p => p.role === 'client');
+
+  const handleCreateTask = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmittingTask(true);
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const { error } = await supabase.from('tasks').insert({
+        title: formData.get('title'),
+        project_id: id,
+        assignee_id: formData.get('assignee_id') || null,
+        due_date: formData.get('due_date') || null,
+        priority: formData.get('priority'),
+        status: 'todo',
+      });
+
+      if (!error) {
+        setIsTaskModalOpen(false);
+        setAssignToClient(false);
+        fetchProjectData();
+      } else {
+        alert(error.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmittingTask(false);
     }
   };
 
@@ -106,6 +146,78 @@ export function ProjectDetails() {
         client={project?.profiles}
       />
 
+      <Modal 
+        isOpen={isTaskModalOpen} 
+        onClose={() => { setIsTaskModalOpen(false); setAssignToClient(false); }} 
+        title="Initialize New Task"
+      >
+        <form className="space-y-6" onSubmit={handleCreateTask}>
+          <div className="space-y-4">
+            <Input name="title" label="Task Objective" placeholder="e.g. Implement OAuth Flow" required />
+            
+            <div className="pt-2 pb-1">
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                    assignToClient ? "bg-emerald-100 text-emerald-600" : "bg-zinc-200 text-zinc-500"
+                  )}>
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-black">Assign to Client</p>
+                    <p className="text-[9px] text-zinc-400 uppercase font-black tracking-tighter">External Stakeholder Assignment</p>
+                  </div>
+                </div>
+                <div 
+                  onClick={() => setAssignToClient(!assignToClient)}
+                  className={cn(
+                    "w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-300",
+                    assignToClient ? "bg-black" : "bg-zinc-200"
+                  )}
+                >
+                  <motion.div 
+                    animate={{ x: assignToClient ? 22 : 2 }}
+                    className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">
+                {assignToClient ? 'Stakeholder Assignment' : 'Internal Assignee'}
+              </label>
+              <select name="assignee_id" className="w-full h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-zinc-400 transition-all">
+                <option value="">{assignToClient ? 'Select client...' : 'Select team member...'}</option>
+                {(assignToClient ? clients : employees).map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input name="due_date" label="Commitment Date" type="date" />
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">Priority Matrix</label>
+                <select name="priority" className="w-full h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-zinc-400 transition-all">
+                  <option value="medium">Medium Priority</option>
+                  <option value="low">Low Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="critical">Critical Mission</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="ghost" onClick={() => { setIsTaskModalOpen(false); setAssignToClient(false); }} className="flex-1 rounded-xl text-zinc-400">Discard</Button>
+            <Button type="submit" disabled={submittingTask} className="flex-1 shadow-elevated rounded-xl bg-black text-white hover:bg-zinc-800 h-11">
+              {submittingTask ? 'Processing...' : 'Confirm Task'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Header Navigation */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-6">
@@ -132,7 +244,10 @@ export function ProjectDetails() {
           <Button variant="outline" className="rounded-xl h-11 border-zinc-200 shadow-sm">
             <Pencil className="w-4 h-4 mr-2" /> Alignment
           </Button>
-          <Button className="bg-black text-white hover:bg-zinc-800 shadow-elevated transition-all active:scale-95 h-11 rounded-xl px-6">
+          <Button 
+            onClick={() => setIsTaskModalOpen(true)}
+            className="bg-black text-white hover:bg-zinc-800 shadow-elevated transition-all active:scale-95 h-11 rounded-xl px-6"
+          >
             <Plus className="w-4 h-4 mr-2" /> Initialize Stream
           </Button>
         </div>
@@ -266,7 +381,11 @@ export function ProjectDetails() {
               >
                 <div className="flex items-center justify-between mb-4 px-2">
                    <h3 className="text-sm font-black text-black uppercase tracking-[0.2em]">All Project Iterations</h3>
-                   <Button size="sm" className="bg-black text-white rounded-xl h-9 text-[10px] font-black uppercase tracking-widest">
+                   <Button 
+                     onClick={() => setIsTaskModalOpen(true)}
+                     size="sm" 
+                     className="bg-black text-white rounded-xl h-9 text-[10px] font-black uppercase tracking-widest"
+                   >
                      <Plus className="w-3.5 h-3.5 mr-2" /> New Task
                    </Button>
                 </div>

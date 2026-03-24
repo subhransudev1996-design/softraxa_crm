@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Briefcase, CheckSquare,
   Settings, Shield, HelpCircle, Book, Trophy, DollarSign,
   Target, Users2, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen,
-  PhoneForwarded, Sparkles
+  PhoneForwarded, Sparkles, FileText
 } from 'lucide-react';
 import { useAuth } from '@/modules/auth/AuthContext';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,8 @@ const menuGroups = [
       { icon: Users, label: 'Clients', path: '/clients', adminOnly: true },
       { icon: Target, label: 'Leads', path: '/crm', adminOnly: true },
       { icon: PhoneForwarded, label: 'Follow-ups', path: '/followup', adminOnly: true },
+      { icon: FileText, label: 'Proposals & Contracts', path: '/proposals', adminOnly: true },
+      { icon: Shield, label: 'Desktop Licensing', path: '/licensing', adminOnly: true },
     ]
   },
   {

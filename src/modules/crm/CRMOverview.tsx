@@ -111,6 +111,9 @@ export function CRMOverview() {
         website_quality: hasWebsite ? formData.get('website_quality') : null,
         is_mobile_responsive: hasWebsite ? formData.get('is_mobile_responsive') === 'true' : false,
         lead_tier: formData.get('lead_tier'),
+        social_platform: formData.get('social_platform') || 'whatsapp',
+        social_handle: formData.get('social_handle'),
+        social_url: formData.get('social_url'),
         created_by: formData.get('created_by') || user?.id,
       });
 
@@ -150,6 +153,9 @@ export function CRMOverview() {
           website_quality: hasWebsite ? formData.get('website_quality') : null,
           is_mobile_responsive: hasWebsite ? formData.get('is_mobile_responsive') === 'true' : false,
           lead_tier: formData.get('lead_tier'),
+          social_platform: formData.get('social_platform'),
+          social_handle: formData.get('social_handle'),
+          social_url: formData.get('social_url'),
           created_by: formData.get('created_by'),
         })
         .eq('id', editingLead.id);
@@ -387,6 +393,37 @@ export function CRMOverview() {
                 type="tel" 
                 placeholder="+1..." 
                 defaultValue={editingLead?.phone}
+              />
+            </div>
+
+            <div className="pt-2 border-t border-zinc-50 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] ml-1">Social Platform</label>
+                  <select 
+                    name="social_platform" 
+                    defaultValue={editingLead?.social_platform || 'whatsapp'}
+                    className="w-full h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-zinc-400"
+                  >
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <Input 
+                  name="social_handle" 
+                  label="Social Handle/ID" 
+                  placeholder="e.g. @username" 
+                  defaultValue={editingLead?.social_handle}
+                />
+              </div>
+              <Input 
+                name="social_url" 
+                label="Social Profile URL" 
+                placeholder="https://..." 
+                defaultValue={editingLead?.social_url}
               />
             </div>
 
@@ -661,6 +698,13 @@ export function CRMOverview() {
                                 <div className="w-1 h-1 rounded-full bg-zinc-200" />
                                 <span>{lead.email}</span>
                               </div>
+                              {lead.social_handle && (
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[9px] font-bold text-zinc-900 bg-zinc-100 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-zinc-200">
+                                    {lead.social_platform}: {lead.social_handle}
+                                  </span>
+                                </div>
+                              )}
                               {lead.address && (
                                 <p className="text-[10px] text-zinc-400 flex items-center gap-1">
                                   <ChevronRight className="w-2.5 h-2.5" />
