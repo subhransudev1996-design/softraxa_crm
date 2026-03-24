@@ -148,9 +148,10 @@ fn get_machine_id() -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn activate_license(key: String, machine_id: String) -> Result<String, String> {
+async fn activate_license(key: String, machine_id: String, api_url: String) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let res = client.post("http://localhost:3000/api/license/activate")
+    let url = format!("{}/api/license/activate", api_url.trim_end_matches('/'));
+    let res = client.post(&url)
         .json(&ActivationRequest {
             license_key: key,
             hardware_id: machine_id,
