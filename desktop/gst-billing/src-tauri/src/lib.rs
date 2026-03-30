@@ -5,12 +5,14 @@ use std::fs;
 use sqlx::sqlite::SqlitePool;
 
 // --- Models ---
-#[derive(Serialize, Deserialize)]
-struct ActivationRequest {
-    #[serde(rename = "licenseKey")]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct SupabaseLicense {
+    id: String,
     license_key: String,
-    #[serde(rename = "hardwareId")]
-    hardware_id: String,
+    status: String,
+    hardware_id: Option<String>,
+    expires_at: Option<String>,
+    activated_at: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, sqlx::FromRow)]
@@ -147,24 +149,105 @@ fn get_machine_id() -> Result<String, String> {
     machine_uid::get().map_err(|e| e.to_string())
 }
 
+/// Activates a license directly via Supabase REST API.
+/// Does NOT require the web panel / Vercel to be running.
 #[tauri::command]
-async fn activate_license(key: String, machine_id: String, api_url: String) -> Result<String, String> {
+async fn activate_license(
+    key: String,
+    machine_id: String,
+    supabase_url: String,
+    supabase_anon_key: String,
+) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let url = format!("{}/api/license/activate", api_url.trim_end_matches('/'));
-    let res = client.post(&url)
-        .json(&ActivationRequest {
-            license_key: key,
-            hardware_id: machine_id,
-        })
+    let normalised_key = key.trim().to_uppercase();
+    let base = supabase_url.trim_end_matches('/');
+
+    // 1. Fetch the license row from Supabase REST API
+    let fetch_url = format!(
+        "{}/rest/v1/desktop_licenses?license_key=eq.{}&select=id,license_key,status,hardware_id,expires_at,activated_at&limit=1",
+        base, normalised_key
+    );
+
+    let fetch_res = client.get(&fetch_url)
+        .header("apikey", &supabase_anon_key)
+        .header("Authorization", format!("Bearer {}", supabase_anon_key))
+        .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Network error: cannot reach Supabase. Check your internet connection. ({})", e))?;
 
-    if res.status().is_success() {
-        Ok(res.text().await.map_err(|e| e.to_string())?)
-    } else {
-        Err(res.text().await.unwrap_or_else(|_| "Activation failed".to_string()))
+    if !fetch_res.status().is_success() {
+        let err_body = fetch_res.text().await.unwrap_or_default();
+        return Err(format!("Database error while looking up license: {}", err_body));
     }
+
+    let licenses: Vec<SupabaseLicense> = fetch_res.json()
+        .await
+        .map_err(|e| format!("Failed to parse license data: {}", e))?;
+
+    let license = licenses.into_iter().next()
+        .ok_or_else(|| "Invalid license key. Please check the key and try again.".to_string())?;
+
+    // 2. Validate status
+    if license.status == "revoked" {
+        return Err("This license has been revoked. Please contact support.".to_string());
+    }
+    if license.status == "expired" {
+        return Err("This license has expired. Please renew your subscription.".to_string());
+    }
+    if let Some(exp) = &license.expires_at {
+        if let Ok(exp_time) = chrono::DateTime::parse_from_rfc3339(exp) {
+            if exp_time < chrono::Utc::now() {
+                return Err("This license has expired. Please renew your subscription.".to_string());
+            }
+        }
+    }
+    // 3. Check hardware binding
+    if license.status == "active" {
+        if let Some(hw) = &license.hardware_id {
+            if !hw.is_empty() && hw != &machine_id {
+                return Err("License is already activated on another device. Contact support to transfer.".to_string());
+            }
+        }
+    }
+
+    // 4. Activate (set hardware_id + status=active)
+    let now = chrono::Utc::now().to_rfc3339();
+    let patch_url = format!(
+        "{}/rest/v1/desktop_licenses?id=eq.{}",
+        base, license.id
+    );
+    let patch_body = serde_json::json!({
+        "hardware_id": machine_id,
+        "status": "active",
+        "activated_at": now
+    });
+
+    let patch_res = client.patch(&patch_url)
+        .header("apikey", &supabase_anon_key)
+        .header("Authorization", format!("Bearer {}", supabase_anon_key))
+        .header("Content-Type", "application/json")
+        .header("Prefer", "return=representation")
+        .json(&patch_body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to activate license: {}", e))?;
+
+    if !patch_res.status().is_success() {
+        let err_body = patch_res.text().await.unwrap_or_default();
+        return Err(format!("Failed to save activation: {}", err_body));
+    }
+
+    // 5. Return success payload as JSON string
+    let result = serde_json::json!({
+        "success": true,
+        "license": {
+            "status": "active",
+            "expires_at": license.expires_at,
+            "activated_at": now
+        }
+    });
+    Ok(result.to_string())
 }
 
 // --- Settings Commands ---

@@ -35,11 +35,21 @@ export default function Activation({ onActivated }: ActivationProps) {
     setError(null);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await invoke<string>('activate_license', { 
-        key: licenseKey, 
+      // Talk directly to Supabase - completely independent of Vercel / web panel
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setError('App configuration error: Supabase credentials not found. Please contact support.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await invoke<string>('activate_license', {
+        key: licenseKey,
         machineId,
-        apiUrl 
+        supabaseUrl,
+        supabaseAnonKey,
       });
       
       const result = JSON.parse(response);
