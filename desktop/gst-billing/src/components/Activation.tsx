@@ -63,7 +63,17 @@ export default function Activation({ onActivated }: ActivationProps) {
          setTimeout(() => onActivated({ expires_at: '2099-12-31' }), 2200);
          return;
       }
-      setError(err.toString() || 'Connection failed. Please check your internet.');
+      let errorMsg = err.toString();
+      try {
+        const parsed = JSON.parse(errorMsg);
+        if (parsed.error) {
+          errorMsg = parsed.error;
+        }
+      } catch (e) {
+        // Not JSON, leave as is
+      }
+      
+      setError(errorMsg || 'Connection failed. Please check your internet.');
     } finally {
       if(!e.isDefaultPrevented()) setLoading(false);
     }
