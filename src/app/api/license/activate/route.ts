@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,20 +9,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'License key and hardware ID are required' }, { status: 400 });
     }
 
+    // This will throw a clear error if Vercel env vars are not configured
+    const supabaseAdmin = getSupabaseAdmin();
+
     // 1. Find the license
     const { data: license, error: fetchError } = await supabaseAdmin
       .from('desktop_licenses')
       .select('*')
-      .eq('license_key', licenseKey)
+      .eq('license_key', licenseKey.trim().toUpperCase())
       .single();
 
-    if (fetchError || !license) {
-      return NextResponse.json({ error: 'Invalid license key' }, { status: 404 });
+    if (fetchError) {
+      console.error('Supabase fetch error:', fetchError.message, fetchError.code);
+      if (fetchError.code === 'PGRST116') {
+        // PostgREST code for "no rows returned" - key genuinely not found
+        return NextResponse.json({ error: 'Invalid license key. Please check the key and try again.' }, { status: 404 });
+      }
+      // Any other DB error (auth/credentials/network)
+      return NextResponse.json({ error: 'Server error while validating license. Please contact support.' }, { status: 500 });
+    }
+
+    if (!license) {
+      return NextResponse.json({ error: 'Invalid license key. Please check the key and try again.' }, { status: 404 });
     }
 
     // 2. Check status
     if (license.status === 'revoked') {
-      return NextResponse.json({ error: 'License has been revoked' }, { status: 403 });
+      return NextResponse.json({ error: 'This license has been revoked. Please contact support.' }, { status: 403 });
     }
 
     const isExpired = license.expires_at && new Date(license.expires_at) < new Date();
@@ -31,16 +44,16 @@ export async function POST(req: NextRequest) {
       if (license.status !== 'expired') {
         await supabaseAdmin.from('desktop_licenses').update({ status: 'expired' }).eq('id', license.id);
       }
-      return NextResponse.json({ error: 'License has expired' }, { status: 403 });
+      return NextResponse.json({ error: 'This license has expired. Please renew your subscription.' }, { status: 403 });
     }
 
     // 3. If already active, check hardwareId
     if (license.status === 'active' && license.hardware_id && license.hardware_id !== hardwareId) {
-      return NextResponse.json({ error: 'License is already active on another device' }, { status: 403 });
+      return NextResponse.json({ error: 'License is already activated on another device. Contact support to transfer.' }, { status: 403 });
     }
 
-    // 4. Activate if pending or if hardware_id matches
-    if (license.status === 'pending') {
+    // 4. Activate if pending or same hardware
+    if (license.status === 'pending' || (license.status === 'active' && license.hardware_id === hardwareId)) {
       const { error: updateError } = await supabaseAdmin
         .from('desktop_licenses')
         .update({
@@ -51,7 +64,8 @@ export async function POST(req: NextRequest) {
         .eq('id', license.id);
 
       if (updateError) {
-        return NextResponse.json({ error: 'Failed to activate license' }, { status: 500 });
+        console.error('License update error:', updateError.message);
+        return NextResponse.json({ error: 'Failed to activate license. Please try again.' }, { status: 500 });
       }
     }
 
@@ -67,6 +81,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('License activation exception:', error.message);
+    return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
